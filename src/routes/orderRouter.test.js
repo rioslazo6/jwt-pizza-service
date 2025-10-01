@@ -4,7 +4,6 @@ const { createAdminUser, randomName } = require("../testUtils");
 
 const diner = { name: "diner user", email: "reg@test.com", password: "a" };
 let dinerToken;
-let dinerUserId;
 let adminToken;
 
 beforeAll(async () => {
@@ -12,7 +11,6 @@ beforeAll(async () => {
   const registerRes = await request(app).post("/api/auth").send(diner);
 
   dinerToken = registerRes.body.token;
-  dinerUserId = registerRes.body.user.id;
 
   const admin = await createAdminUser();
   const adminLoginRes = await request(app).put("/api/auth").send(admin);
