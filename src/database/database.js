@@ -110,18 +110,13 @@ class DB {
     nameFilter = nameFilter.replace(/\*/g, '%');
 
     try {
-      let users = await this.query(connection, `
-        SELECT u.id, name, email, GROUP_CONCAT(DISTINCT ur.role ORDER BY ur.role SEPARATOR ', ') AS roles
-          FROM user u
-          JOIN userRole ur ON u.id = ur.userId
-          WHERE name LIKE ?
-          GROUP BY u.id, name, email
-          LIMIT ${limit + 1}
-          OFFSET ${offset}
-        `, [nameFilter]);
+      let users = await this.query(connection, `SELECT id, name, email FROM user WHERE name LIKE ? LIMIT ${limit + 1} OFFSET ${offset}`, [nameFilter])
       const more = users.length > limit;
       if (more) {
         users = users.slice(0, limit);
+      }
+      for (const user of users) {
+        user.roles = await this.query(connection, `SELECT role, objectId FROM userRole WHERE userId=?`, [user.id]);
       }
       return [users, more];
     } finally {
