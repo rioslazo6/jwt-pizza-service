@@ -99,6 +99,36 @@ class DB {
     }
   }
 
+  async getUserList(authUser, page = 0, limit = 10, nameFilter = '*') {
+    if (!authUser?.isRole(Role.Admin)) {
+      throw new StatusCodeError('forbidden', 403); // Only admins should have permission to get this list
+    }
+
+    const connection = await this.getConnection();
+
+    const offset = page * limit;
+    nameFilter = nameFilter.replace(/\*/g, '%');
+
+    try {
+      let users = await this.query(connection, `
+        SELECT u.id, name, email, GROUP_CONCAT(DISTINCT ur.role ORDER BY ur.role SEPARATOR ', ') AS roles
+          FROM user u
+          JOIN userRole ur ON u.id = ur.userId
+          WHERE name LIKE ?
+          GROUP BY u.id, name, email
+          LIMIT ${limit + 1}
+          OFFSET ${offset}
+        `, [nameFilter]);
+      const more = users.length > limit;
+      if (more) {
+        users = users.slice(0, limit);
+      }
+      return [users, more];
+    } finally {
+      connection.end();
+    }
+  }
+
   async loginUser(userId, token) {
     token = this.getTokenSignature(token);
     const connection = await this.getConnection();
