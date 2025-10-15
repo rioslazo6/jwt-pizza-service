@@ -11,6 +11,7 @@ beforeAll(async () => {
   testUser.email = randomName() + "@test.com";
   const registerRes = await request(app).post("/api/auth").send(testUser);
   testUserToken = registerRes.body.token;
+  testUserId = registerRes.body.id;
 
   const admin = await createAdminUser();
   const adminLoginRes = await request(app).put("/api/auth").send(admin);
@@ -65,4 +66,18 @@ test("list non-existent user", async () => {
     .set("Authorization", `Bearer ${adminToken}`);
   expect(listUsersRes.status).toBe(200);
   expect(listUsersRes.body.users.length).toBe(0); // Zero users returned
+});
+
+test("delete user unauthorized", async () => {
+  const deleteUserRes = await request(app)
+    .delete(`/api/user/${testUserId}`)
+    .set("Authorization", `Bearer ${testUserToken}`);
+  expect(deleteUserRes.status).toBe(403);
+});
+
+test("delete user", async () => {
+  const deleteUserRes = await request(app)
+    .delete(`/api/user/${testUserId}`)
+    .set("Authorization", `Bearer ${adminToken}`);
+  expect(deleteUserRes.status).toBe(200);
 });
