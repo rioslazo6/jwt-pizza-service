@@ -1,3 +1,4 @@
+const os = require("os");
 const { metrics: metricsConfig } = require("./config");
 
 const requestsByEndpoint = {};
@@ -29,6 +30,18 @@ setInterval(() => {
       })
     );
   });
+
+  metrics.push(
+    createMetric("cpuUsage", getCpuUsagePercentage(), "%", "gauge", "asDouble", {
+      host: os.hostname(),
+    })
+  );
+
+  metrics.push(
+    createMetric("memoryUsage", getMemoryUsagePercentage(), "%", "gauge", "asDouble", {
+      host: os.hostname(),
+    })
+  );
 
   sendMetricToGrafana(metrics);
 }, 10000);
@@ -94,6 +107,19 @@ function sendMetricToGrafana(metrics) {
     .catch((error) => {
       console.error("Error pushing metrics:", error);
     });
+}
+
+function getCpuUsagePercentage() {
+  const cpuUsage = os.loadavg()[0] / os.cpus().length;
+  return cpuUsage.toFixed(2) * 100;
+}
+
+function getMemoryUsagePercentage() {
+  const totalMemory = os.totalmem();
+  const freeMemory = os.freemem();
+  const usedMemory = totalMemory - freeMemory;
+  const memoryUsage = (usedMemory / totalMemory) * 100;
+  return memoryUsage.toFixed(2);
 }
 
 module.exports = { requestTracker };
