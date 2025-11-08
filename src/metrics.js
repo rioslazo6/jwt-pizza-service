@@ -15,6 +15,9 @@ let orderFailureCount = 0;
 let pizzasSold = 0;
 let totalRevenue = 0;
 
+let requestLatency = 0;
+let orderLatency = 0;
+
 // Middleware to track requests
 function requestTracker(req, res, next) {
   const userId = req.user?.id;
@@ -23,6 +26,14 @@ function requestTracker(req, res, next) {
   const endpoint = `[${req.method}] ${req.path}`;
   requestsByEndpoint[endpoint] = (requestsByEndpoint[endpoint] || 0) + 1;
   requestsByMethod[req.method] = (requestsByMethod[req.method] || 0) + 1;
+
+  const startTime = performance.now();
+  res.once("finish", () => {
+    const endTime = performance.now();
+    const latency = endTime - startTime;
+    requestLatency += latency;
+  });
+
   next();
 }
 
@@ -65,9 +76,15 @@ setInterval(() => {
   metrics.push(createMetric("orderSuccessCount", orderSuccessCount, "1", "sum", "asInt", {}));
   metrics.push(createMetric("orderFailureCount", orderFailureCount, "1", "sum", "asInt", {}));
   metrics.push(createMetric("pizzasSold", pizzasSold, "1", "sum", "asInt", {}));
-  metrics.push(createMetric("totalRevenue", totalRevenue, "1", "sum", "asDouble", {}));
+  metrics.push(createMetric("totalRevenue", totalRevenue, "₿", "sum", "asDouble", {}));
+
+  metrics.push(createMetric("orderLatency", orderLatency, "ms", "gauge", "asDouble", {}));
+  metrics.push(createMetric("requestLatency", requestLatency, "ms", "gauge", "asDouble", {}));
 
   sendMetricToGrafana(metrics);
+
+  orderLatency = 0;
+  requestLatency = 0;
 }, 10000);
 
 function createMetric(metricName, metricValue, metricUnit, metricType, valueType, attributes) {
@@ -158,11 +175,12 @@ function attemptedLogin(success) {
   else loginFailureCount++;
 }
 
-function purchasedPizza(success, pizzaCount, revenue) {
+function purchasedPizza(success, pizzaCount, revenue, latency) {
   if (success) {
     orderSuccessCount++;
     pizzasSold += pizzaCount;
     totalRevenue += revenue;
+    orderLatency += latency;
   } else {
     orderFailureCount++;
   }

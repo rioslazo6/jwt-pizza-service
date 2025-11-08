@@ -114,6 +114,7 @@ orderRouter.post(
   "/",
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
+    const startTime = performance.now();
     const orderReq = req.body;
     const order = await DB.addDinerOrder(req.user, orderReq);
     const r = await fetch(`${config.factory.url}/api/order`, {
@@ -130,13 +131,14 @@ orderRouter.post(
     const j = await r.json();
     if (r.ok) {
       res.send({ order, followLinkToEndChaos: j.reportUrl, jwt: j.jwt });
+      const endTime = performance.now();
       const revenue = order.items.reduce((total, item) => total + item.price, 0);
-      purchasedPizza(true, order.items.length, revenue);
+      purchasedPizza(true, order.items.length, revenue, endTime - startTime);
     } else {
       res
         .status(500)
         .send({ message: "Failed to fulfill order at factory", followLinkToEndChaos: j.reportUrl });
-      purchasedPizza(false, 0, 0);
+      purchasedPizza(false, 0, 0, 0);
     }
   })
 );
