@@ -10,6 +10,11 @@ const requestsByMethod = {};
 let loginSuccessCount = 0;
 let loginFailureCount = 0;
 
+let orderSuccessCount = 0;
+let orderFailureCount = 0;
+let pizzasSold = 0;
+let totalRevenue = 0;
+
 // Middleware to track requests
 function requestTracker(req, res, next) {
   const userId = req.user?.id;
@@ -56,6 +61,11 @@ setInterval(() => {
 
   metrics.push(createMetric("loginSuccessCount", loginSuccessCount, "1", "sum", "asInt", {}));
   metrics.push(createMetric("loginFailureCount", loginFailureCount, "1", "sum", "asInt", {}));
+
+  metrics.push(createMetric("orderSuccessCount", orderSuccessCount, "1", "sum", "asInt", {}));
+  metrics.push(createMetric("orderFailureCount", orderFailureCount, "1", "sum", "asInt", {}));
+  metrics.push(createMetric("pizzasSold", pizzasSold, "1", "sum", "asInt", {}));
+  metrics.push(createMetric("totalRevenue", totalRevenue, "1", "sum", "asDouble", {}));
 
   sendMetricToGrafana(metrics);
 }, 10000);
@@ -148,4 +158,14 @@ function attemptedLogin(success) {
   else loginFailureCount++;
 }
 
-module.exports = { requestTracker, attemptedLogin };
+function purchasedPizza(success, pizzaCount, revenue) {
+  if (success) {
+    orderSuccessCount++;
+    pizzasSold += pizzaCount;
+    totalRevenue += revenue;
+  } else {
+    orderFailureCount++;
+  }
+}
+
+module.exports = { requestTracker, attemptedLogin, purchasedPizza };
