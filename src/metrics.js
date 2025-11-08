@@ -1,11 +1,17 @@
 const os = require("os");
 const { metrics: metricsConfig } = require("./config");
 
+const activeUsers = new Map();
+const ACTIVE_THRESHOLD = 60 * 1000; // 60 seconds
+
 const requestsByEndpoint = {};
 const requestsByMethod = {};
 
 // Middleware to track requests
 function requestTracker(req, res, next) {
+  const userId = req.user?.id;
+  if (userId) activeUsers.set(String(userId), Date.now());
+
   const endpoint = `[${req.method}] ${req.path}`;
   requestsByEndpoint[endpoint] = (requestsByEndpoint[endpoint] || 0) + 1;
   requestsByMethod[req.method] = (requestsByMethod[req.method] || 0) + 1;
@@ -42,6 +48,8 @@ setInterval(() => {
       host: os.hostname(),
     })
   );
+
+  metrics.push(createMetric("activeUsers", getActiveUsersCount(), "1", "gauge", "asInt", {}));
 
   sendMetricToGrafana(metrics);
 }, 10000);
@@ -120,6 +128,13 @@ function getMemoryUsagePercentage() {
   const usedMemory = totalMemory - freeMemory;
   const memoryUsage = (usedMemory / totalMemory) * 100;
   return memoryUsage.toFixed(2);
+}
+
+function getActiveUsersCount() {
+  // Users with recent activity determined by the active threshold are counted as active
+  const limit = Date.now() - ACTIVE_THRESHOLD;
+  for (const [id, timestamp] of activeUsers) if (timestamp < limit) activeUsers.delete(id);
+  return activeUsers.size;
 }
 
 module.exports = { requestTracker };
