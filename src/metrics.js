@@ -7,6 +7,9 @@ const ACTIVE_THRESHOLD = 60 * 1000; // 60 seconds
 const requestsByEndpoint = {};
 const requestsByMethod = {};
 
+let loginSuccessCount = 0;
+let loginFailureCount = 0;
+
 // Middleware to track requests
 function requestTracker(req, res, next) {
   const userId = req.user?.id;
@@ -50,6 +53,9 @@ setInterval(() => {
   );
 
   metrics.push(createMetric("activeUsers", getActiveUsersCount(), "1", "gauge", "asInt", {}));
+
+  metrics.push(createMetric("loginSuccessCount", loginSuccessCount, "1", "sum", "asInt", {}));
+  metrics.push(createMetric("loginFailureCount", loginFailureCount, "1", "sum", "asInt", {}));
 
   sendMetricToGrafana(metrics);
 }, 10000);
@@ -137,4 +143,9 @@ function getActiveUsersCount() {
   return activeUsers.size;
 }
 
-module.exports = { requestTracker };
+function attemptedLogin(success) {
+  if (success) loginSuccessCount++;
+  else loginFailureCount++;
+}
+
+module.exports = { requestTracker, attemptedLogin };
